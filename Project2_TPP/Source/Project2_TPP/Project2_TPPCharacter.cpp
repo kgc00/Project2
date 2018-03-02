@@ -8,6 +8,7 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/Controller.h"
 #include <EngineGlobals.h>
+#include "Runtime/Engine/Classes/Camera/CameraTypes.h"
 #include "Engine/World.h"
 #include "Runtime/Engine/Public/TimerManager.h"
 #include <Runtime/Engine/Classes/Engine/Engine.h>
@@ -48,10 +49,21 @@ AProject2_TPPCharacter::AProject2_TPPCharacter()
 	FollowCamera->SetupAttachment(CameraBoom, USpringArmComponent::SocketName); // Attach the camera to the end of the boom and let the boom adjust to match the controller orientation
 	FollowCamera->bUsePawnControlRotation = false; // Camera does not rotate relative to arm
 
-	// Variables
+	// enable tick
+	SetActorTickEnabled(true);
+	PrimaryActorTick.bCanEverTick = true;
+	PrimaryActorTick.SetTickFunctionEnable(true);
+	PrimaryActorTick.bStartWithTickEnabled = true;
 
+	// Variables
 	canRoll = true;
+	isRolling = false;
+	noForwardMovement = false;
+	noRightMovement = false;
 	World = GetWorld();
+	rollMultiplier = 500.f;
+	rollLengthFloat = 0.35f;
+	rollCooldownLengthFloat = 2.0f;
 
 	// Note: The skeletal mesh and anim blueprint references on the Mesh component (inherited from Character) 
 	// are set in the derived blueprint asset named MyCharacter (to avoid direct content references in C++)
@@ -64,7 +76,7 @@ void AProject2_TPPCharacter::SetupPlayerInputComponent(class UInputComponent* Pl
 {
 	// Set up gameplay key bindings
 	check(PlayerInputComponent);
-	PlayerInputComponent->BindAction("Jump", IE_Pressed, this, &ACharacter::Jump);
+	PlayerInputComponent->BindAction("Jump", IE_Pressed, this, &AProject2_TPPCharacter::checkCanJump);
 	PlayerInputComponent->BindAction("Jump", IE_Released, this, &ACharacter::StopJumping);
 	PlayerInputComponent->BindAction("Roll", IE_Released, this, &AProject2_TPPCharacter::Roll);
 
@@ -115,23 +127,78 @@ void AProject2_TPPCharacter::LookUpAtRate(float Rate)
 	AddControllerPitchInput(Rate * BaseLookUpRate * GetWorld()->GetDeltaSeconds());
 }
 
+void AProject2_TPPCharacter::Tick(float DeltaTime)
+{
+	Super::Tick(DeltaTime);
+
+	if (isRolling) {
+		if (noForwardMovement && noRightMovement) {			
+			AddMovementInput(GetControlRotation().Vector(), rollMultiplier);
+		} else {
+			AddMovementInput(GetActorForwardVector(), rollMultiplier);
+		}
+	}
+}
+
+void AProject2_TPPCharacter::checkCanJump()
+{
+	if (isRolling) {
+		return;
+	}
+	else {
+		Jump();
+	}
+}
+void AProject2_TPPCharacter::Jump()
+{
+	Super::Jump();
+	GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Orange, TEXT("We jumped."));
+	canRoll = false;
+}
+
+void AProject2_TPPCharacter::Landed(const FHitResult& Hit)
+{
+	Super::Landed(Hit);
+	// if roll hasn't been called
+	if (!GetWorldTimerManager().IsTimerActive(rollCooldownTimerHandle)) {
+		canRoll = true;
+		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Green, TEXT("Roll timer is not active and we landed.  Roll is reset."));
+	}
+	else {
+		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, TEXT("Roll is active and we landed.  Roll is NOT reset."));
+	}
+}
+
+
 void AProject2_TPPCharacter::Roll()
 {
 	if (canRoll) {
 		canRoll = false;
+		isRolling = true;
 		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Yellow, TEXT("Call Roll!"));
-		World->GetTimerManager().SetTimer(rollCooldown, this, &AProject2_TPPCharacter::ResetRoll, 2.0f, false);
-		//FString test = World->GetName();
-		//FString* poo = &test;		
-		//GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Yellow, FString::Printf(TEXT("Some variable values: World: %s"), poo));
+		World->GetTimerManager().SetTimer(rollLengthTimerHandle, this, &AProject2_TPPCharacter::EndRoll, rollLengthFloat, false);
+		World->GetTimerManager().SetTimer(rollCooldownTimerHandle, this, &AProject2_TPPCharacter::ResetRoll, rollCooldownLengthFloat, false);
+		GetCharacterMovement()->MaxWalkSpeed = 1600.f;
+		GetCharacterMovement()->MaxFlySpeed = 1600.f;
+		GetCharacterMovement()->MaxAcceleration = 99999.f;
 	}
+}
+
+void AProject2_TPPCharacter::EndRoll()
+{
+	isRolling = false;
+	GetCharacterMovement()->MaxWalkSpeed = 600.f;
+	GetCharacterMovement()->MaxFlySpeed = 600.f;
+	GetCharacterMovement()->MaxAcceleration = 2048.f;
+	World->GetTimerManager().ClearTimer(rollLengthTimerHandle);
+	GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Yellow, TEXT("End Roll!"));
 }
 
 void AProject2_TPPCharacter::ResetRoll()
 {
 	canRoll = true;
-	World->GetTimerManager().ClearTimer(rollCooldown);
-	GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Blue, TEXT("Clear Roll!"));
+	World->GetTimerManager().ClearTimer(rollCooldownTimerHandle);
+	GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Blue, TEXT("Reset Roll!"));
 }
 
 void AProject2_TPPCharacter::MoveForward(float Value)
@@ -145,6 +212,11 @@ void AProject2_TPPCharacter::MoveForward(float Value)
 		// get forward vector
 		const FVector Direction = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::X);
 		AddMovementInput(Direction, Value);
+
+		noForwardMovement = false;
+	}
+	else {
+		noForwardMovement = true;
 	}
 }
 
@@ -160,5 +232,16 @@ void AProject2_TPPCharacter::MoveRight(float Value)
 		const FVector Direction = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::Y);
 		// add movement in that direction
 		AddMovementInput(Direction, Value);
+
+		noRightMovement = false;
+	}
+	else {
+		noRightMovement = true;
 	}
 }
+
+
+// Example DEBUG Code
+//FString test = World->GetName();
+//FString* poo = &test;		
+//GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Yellow, FString::Printf(TEXT("Some variable values: World: %s"), poo));

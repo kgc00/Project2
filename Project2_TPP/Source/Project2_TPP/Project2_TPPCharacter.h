@@ -52,22 +52,39 @@ protected:
 	 */
 	void LookUpAtRate(float Rate);
 
+	virtual void Tick(float DeltaTime);
+
+	virtual void Jump();
+
+	virtual void Landed(const FHitResult& Hit);
+
 	// roll stuff
 	void Roll();
-
+	void EndRoll();
 	void ResetRoll();
 
 	bool canRoll;
-
-	FTimerHandle rollCooldown;
-
+	bool noForwardMovement;
+	bool noRightMovement;
+	bool isRolling;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Roll)
+	float rollMultiplier;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Roll)
+	float rollLengthFloat;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Roll)
+	float rollCooldownLengthFloat;
+	FTimerHandle rollCooldownTimerHandle;
+	FTimerHandle rollLengthTimerHandle;
 	UWorld* World;
+	FMinimalViewInfo* view;
 
 	/** Handler for when a touch input begins. */
 	void TouchStarted(ETouchIndex::Type FingerIndex, FVector Location);
 
 	/** Handler for when a touch input stops. */
 	void TouchStopped(ETouchIndex::Type FingerIndex, FVector Location);
+
+	void checkCanJump();
 
 protected:
 	// APawn interface
@@ -80,4 +97,3 @@ public:
 	/** Returns FollowCamera subobject **/
 	FORCEINLINE class UCameraComponent* GetFollowCamera() const { return FollowCamera; }
 };
-
