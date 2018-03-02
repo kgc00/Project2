@@ -52,6 +52,17 @@ protected:
 	 */
 	void LookUpAtRate(float Rate);
 
+	// roll stuff
+	void Roll();
+
+	void ResetRoll();
+
+	bool canRoll;
+
+	FTimerHandle rollCooldown;
+
+	UWorld* World;
+
 	/** Handler for when a touch input begins. */
 	void TouchStarted(ETouchIndex::Type FingerIndex, FVector Location);
 
