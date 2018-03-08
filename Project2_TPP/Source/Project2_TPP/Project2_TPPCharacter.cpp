@@ -10,6 +10,7 @@
 #include <EngineGlobals.h>
 #include "Runtime/Engine/Classes/Camera/CameraTypes.h"
 #include "Engine/World.h"
+#include "Runtime/Engine/Public/DrawDebugHelpers.h"
 #include "Runtime/Engine/Public/TimerManager.h"
 #include <Runtime/Engine/Classes/Engine/Engine.h>
 #include "GameFramework/SpringArmComponent.h"
@@ -64,6 +65,9 @@ AProject2_TPPCharacter::AProject2_TPPCharacter()
 	rollMultiplier = 500.f;
 	rollLengthFloat = 0.35f;
 	rollCooldownLengthFloat = 2.0f;
+	raycastStartOffset = FVector(0.f,0.f,50.f);
+	raycastEndOffset = FVector(0.f, 0.f, 550.f);
+	distance = 4000.0f;
 
 	// Note: The skeletal mesh and anim blueprint references on the Mesh component (inherited from Character) 
 	// are set in the derived blueprint asset named MyCharacter (to avoid direct content references in C++)
@@ -79,6 +83,7 @@ void AProject2_TPPCharacter::SetupPlayerInputComponent(class UInputComponent* Pl
 	PlayerInputComponent->BindAction("Jump", IE_Pressed, this, &AProject2_TPPCharacter::checkCanJump);
 	PlayerInputComponent->BindAction("Jump", IE_Released, this, &ACharacter::StopJumping);
 	PlayerInputComponent->BindAction("Roll", IE_Released, this, &AProject2_TPPCharacter::Roll);
+	PlayerInputComponent->BindAction("Shoot", IE_Pressed, this, &AProject2_TPPCharacter::checkCanShoot);
 
 	PlayerInputComponent->BindAxis("MoveForward", this, &AProject2_TPPCharacter::MoveForward);
 	PlayerInputComponent->BindAxis("MoveRight", this, &AProject2_TPPCharacter::MoveRight);
@@ -149,10 +154,31 @@ void AProject2_TPPCharacter::checkCanJump()
 		Jump();
 	}
 }
+void AProject2_TPPCharacter::checkCanShoot()
+{
+	if (!isRolling && !IsJumping()) {
+		// add timer or ammo, etc
+		Shoot();
+	}
+}
+void AProject2_TPPCharacter::Shoot()
+{
+	FHitResult* hitResult = new FHitResult();
+	FVector startTrace = (GetActorLocation() + raycastStartOffset);
+	FVector forwardVector = GetFollowCamera()->GetForwardVector();
+	FVector endTrace = ((forwardVector * distance) + startTrace + raycastEndOffset);
+	FCollisionQueryParams* traceParams = new FCollisionQueryParams();
+
+	if (World->LineTraceSingleByChannel(*hitResult, startTrace, endTrace, ECC_Visibility, *traceParams)) {
+		DrawDebugLine(World, startTrace, endTrace, FColor::Green, false, 5.0f);
+		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Orange, TEXT("We shot stuff."));
+	}
+}
+
 void AProject2_TPPCharacter::Jump()
 {
 	Super::Jump();
-	GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Orange, TEXT("We jumped."));
+	//GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Orange, TEXT("We jumped."));
 	canRoll = false;
 }
 
@@ -162,7 +188,7 @@ void AProject2_TPPCharacter::Landed(const FHitResult& Hit)
 	// if roll hasn't been called
 	if (!GetWorldTimerManager().IsTimerActive(rollCooldownTimerHandle)) {
 		canRoll = true;
-		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Green, TEXT("Roll timer is not active and we landed.  Roll is reset."));
+		//GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Green, TEXT("Roll timer is not active and we landed.  Roll is reset."));
 	}
 	else {
 		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, TEXT("Roll is active and we landed.  Roll is NOT reset."));
@@ -175,7 +201,7 @@ void AProject2_TPPCharacter::Roll()
 	if (canRoll) {
 		canRoll = false;
 		isRolling = true;
-		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Yellow, TEXT("Call Roll!"));
+		//GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Yellow, TEXT("Call Roll!"));
 		World->GetTimerManager().SetTimer(rollLengthTimerHandle, this, &AProject2_TPPCharacter::EndRoll, rollLengthFloat, false);
 		World->GetTimerManager().SetTimer(rollCooldownTimerHandle, this, &AProject2_TPPCharacter::ResetRoll, rollCooldownLengthFloat, false);
 		GetCharacterMovement()->MaxWalkSpeed = 1600.f;
@@ -191,14 +217,14 @@ void AProject2_TPPCharacter::EndRoll()
 	GetCharacterMovement()->MaxFlySpeed = 600.f;
 	GetCharacterMovement()->MaxAcceleration = 2048.f;
 	World->GetTimerManager().ClearTimer(rollLengthTimerHandle);
-	GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Yellow, TEXT("End Roll!"));
+	//GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Yellow, TEXT("End Roll!"));
 }
 
 void AProject2_TPPCharacter::ResetRoll()
 {
 	canRoll = true;
 	World->GetTimerManager().ClearTimer(rollCooldownTimerHandle);
-	GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Blue, TEXT("Reset Roll!"));
+	//GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Blue, TEXT("Reset Roll!"));
 }
 
 void AProject2_TPPCharacter::MoveForward(float Value)

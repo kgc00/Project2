@@ -73,6 +73,12 @@ protected:
 	float rollLengthFloat;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Roll)
 	float rollCooldownLengthFloat;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Shoot)
+	float distance;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Shoot)
+	FVector raycastStartOffset;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Shoot)
+	FVector raycastEndOffset;
 	FTimerHandle rollCooldownTimerHandle;
 	FTimerHandle rollLengthTimerHandle;
 	UWorld* World;
@@ -85,6 +91,10 @@ protected:
 	void TouchStopped(ETouchIndex::Type FingerIndex, FVector Location);
 
 	void checkCanJump();
+
+	void checkCanShoot();
+
+	void Shoot();
 
 protected:
 	// APawn interface
