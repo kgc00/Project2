@@ -39,12 +39,6 @@ void AImpulseGadget::BeginPlay()
 	{
 		playerChar = *It;
 	}
-	if (playerChar) {
-		FString temp = playerChar->GetName();
-		FString* test = &temp;
-		if (test)		
-		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Orange, TEXT("Hello from particle system! Player is equal to: %s"), test);
-	}
 }
 
 void AImpulseGadget::OnOverlapBegin(UPrimitiveComponent * OverlappedComp, AActor * OtherActor, UPrimitiveComponent * OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult & SweepResult)
@@ -59,7 +53,6 @@ void AImpulseGadget::OnOverlapBegin(UPrimitiveComponent * OverlappedComp, AActor
 		movementComp->AddImpulse(impulseAmount);
 		if (OtherActor == playerChar) {
 			playerChar->canRoll = false;
-			GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Orange, TEXT("Player cannot roll."));
 		}
 	}
 }

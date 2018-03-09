@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
+#include "TimerManager.h"
 #include "Project2_TPPCharacter.generated.h"
 
 UCLASS(config=Game)
@@ -83,6 +84,12 @@ protected:
 	FTimerHandle rollLengthTimerHandle;
 	UWorld* World;
 	FMinimalViewInfo* view;
+	bool finishedLoadingShell;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Shoot)
+	float shotTimer;
+	UFUNCTION()
+	void ShotTimerFinished();
+	FTimerHandle shotTimerHandle;
 
 	/** Handler for when a touch input begins. */
 	void TouchStarted(ETouchIndex::Type FingerIndex, FVector Location);

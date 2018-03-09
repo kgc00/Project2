@@ -68,6 +68,8 @@ AProject2_TPPCharacter::AProject2_TPPCharacter()
 	raycastStartOffset = FVector(0.f,0.f,50.f);
 	raycastEndOffset = FVector(0.f, 0.f, 550.f);
 	distance = 4000.0f;
+	finishedLoadingShell = true;
+	shotTimer = 2.0f;
 
 	// Note: The skeletal mesh and anim blueprint references on the Mesh component (inherited from Character) 
 	// are set in the derived blueprint asset named MyCharacter (to avoid direct content references in C++)
@@ -108,6 +110,12 @@ void AProject2_TPPCharacter::SetupPlayerInputComponent(class UInputComponent* Pl
 void AProject2_TPPCharacter::OnResetVR()
 {
 	UHeadMountedDisplayFunctionLibrary::ResetOrientationAndPosition();
+}
+
+void AProject2_TPPCharacter::ShotTimerFinished()
+{
+	GetWorldTimerManager().ClearTimer(shotTimerHandle);
+	finishedLoadingShell = true;
 }
 
 void AProject2_TPPCharacter::TouchStarted(ETouchIndex::Type FingerIndex, FVector Location)
@@ -156,7 +164,8 @@ void AProject2_TPPCharacter::checkCanJump()
 }
 void AProject2_TPPCharacter::checkCanShoot()
 {
-	if (!isRolling && !IsJumping() && !GetCharacterMovement()->IsFalling()) {
+	bool canFire = !isRolling && !IsJumpProvidingForce() && !GetCharacterMovement()->IsFalling() && finishedLoadingShell;
+	if (canFire) {
 		// add timer or ammo, etc
 		Shoot();
 	}
@@ -173,12 +182,13 @@ void AProject2_TPPCharacter::Shoot()
 		DrawDebugLine(World, startTrace, endTrace, FColor::Green, false, 5.0f);
 		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Orange, TEXT("We shot stuff."));
 	}
+	finishedLoadingShell = false;
+	World->GetTimerManager().SetTimer(shotTimerHandle, this, &AProject2_TPPCharacter::ShotTimerFinished, shotTimer, false);
 }
 
 void AProject2_TPPCharacter::Jump()
 {
 	Super::Jump();
-	//GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Orange, TEXT("We jumped."));
 	canRoll = false;
 }
 
@@ -188,7 +198,6 @@ void AProject2_TPPCharacter::Landed(const FHitResult& Hit)
 	// if roll hasn't been called
 	if (!GetWorldTimerManager().IsTimerActive(rollCooldownTimerHandle)) {
 		canRoll = true;
-		//GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Green, TEXT("Roll timer is not active and we landed.  Roll is reset."));
 	}
 	else {
 		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, TEXT("Roll is active and we landed.  Roll is NOT reset."));
