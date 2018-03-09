@@ -156,7 +156,7 @@ void AProject2_TPPCharacter::checkCanJump()
 }
 void AProject2_TPPCharacter::checkCanShoot()
 {
-	if (!isRolling && !IsJumping()) {
+	if (!isRolling && !IsJumping() && !GetCharacterMovement()->IsFalling()) {
 		// add timer or ammo, etc
 		Shoot();
 	}

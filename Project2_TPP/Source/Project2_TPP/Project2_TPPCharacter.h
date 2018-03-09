@@ -63,7 +63,7 @@ protected:
 	void EndRoll();
 	void ResetRoll();
 
-	bool canRoll;
+	
 	bool noForwardMovement;
 	bool noRightMovement;
 	bool isRolling;
@@ -102,6 +102,7 @@ protected:
 	// End of APawn interface
 
 public:
+	bool canRoll;
 	/** Returns CameraBoom subobject **/
 	FORCEINLINE class USpringArmComponent* GetCameraBoom() const { return CameraBoom; }
 	/** Returns FollowCamera subobject **/
