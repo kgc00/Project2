@@ -217,10 +217,9 @@ void AProject2_TPPCharacter::Die()
 void AProject2_TPPCharacter::ThrowGizmo()
 {
 	if (GizmoManager) {
-		GetActorForwardVector();
-		FVector Location(GetActorLocation().X,
-			GetActorLocation().Y + 200.0f,
-			GetActorLocation().Z - 75.0f);
+		FVector Offset = GetActorForwardVector() * 200.0f;
+		FVector globalLocation = FVector(GetActorLocation().X, GetActorLocation().Y, GetActorLocation().Z - 75.0f);
+		FVector Location(Offset + globalLocation);
 		FRotator Rotation(GetActorRotation());
 		FActorSpawnParameters SpawnInfo;
 		GizmoManager->SpawnImpulseGadget(Location, Rotation, SpawnInfo);
