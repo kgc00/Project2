@@ -5,13 +5,14 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
 #include "TimerManager.h"
+#include "GizmoManagerComponent.h"
 #include "Project2_TPPCharacter.generated.h"
 
 UCLASS(config=Game)
 class AProject2_TPPCharacter : public ACharacter
 {
 	GENERATED_BODY()
-
+		
 	/** Camera boom positioning the camera behind the character */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
 	class USpringArmComponent* CameraBoom;
@@ -82,6 +83,14 @@ protected:
 	FVector raycastEndOffset;
 	FTimerHandle rollCooldownTimerHandle;
 	FTimerHandle rollLengthTimerHandle;
+	UGizmoManagerComponent* GizmoManager;
+	class AImpulseGadget* impulseGadget;
+	bool gizmoReady;
+	UFUNCTION()
+	void ResetGizmo();
+	FTimerHandle gizmoCooldownTimerHandle;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = gizmo)
+	float gizmoCooldownLengthFloat;
 	UWorld* World;
 	FMinimalViewInfo* view;
 	bool finishedLoadingShell;
@@ -90,6 +99,10 @@ protected:
 	UFUNCTION()
 	void ShotTimerFinished();
 	FTimerHandle shotTimerHandle;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Shoot)
+	int maxHealth;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Shoot)
+	int currentHealth;
 
 	/** Handler for when a touch input begins. */
 	void TouchStarted(ETouchIndex::Type FingerIndex, FVector Location);
@@ -103,12 +116,19 @@ protected:
 
 	void Shoot();
 
+	void Die();
+
+	void ThrowGizmo();
+	
+	void CheckCanUseGizmo();
+
 protected:
 	// APawn interface
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 	// End of APawn interface
 
 public:
+	void CustomTakeDamage(int incomingDamage);
 	bool canRoll;
 	/** Returns CameraBoom subobject **/
 	FORCEINLINE class USpringArmComponent* GetCameraBoom() const { return CameraBoom; }

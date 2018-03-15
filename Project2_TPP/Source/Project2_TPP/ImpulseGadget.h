@@ -9,8 +9,9 @@
 #include "Runtime/Engine/Classes/GameFramework/CharacterMovementComponent.h"
 #include "Runtime/Engine/Classes/Particles/ParticleSystemComponent.h"
 #include <Runtime/Engine/Classes/Engine/Engine.h>
-#include "Runtime/Engine/Public/EngineUtils.h"
 #include "Project2_TPPCharacter.h"
+#include "TimerManager.h"
+#include "Runtime/Engine/Public/EngineUtils.h"
 #include "ImpulseGadget.generated.h"
 
 UCLASS()
@@ -36,6 +37,15 @@ protected:
 	FVector impulseAmount;
 
 	AProject2_TPPCharacter* playerChar;
+
+	FTimerHandle lifetimeTimerHandle;
+
+	float lifetimeTimerLength; 
+
+	bool timerSet;
+
+	UFUNCTION()
+	void lifetimeTimerExpired();
 
 	UFUNCTION()
 	void OnOverlapBegin(class UPrimitiveComponent* OverlappedComp, class AActor* OtherActor, class UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);

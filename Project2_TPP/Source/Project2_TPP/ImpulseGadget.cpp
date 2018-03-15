@@ -1,7 +1,7 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "ImpulseGadget.h"
-
+#include "Engine/World.h"
 
 // Sets default values
 AImpulseGadget::AImpulseGadget()
@@ -25,6 +25,8 @@ AImpulseGadget::AImpulseGadget()
 	BoxCollider->OnComponentEndOverlap.AddDynamic(this, &AImpulseGadget::OnOverlapEnd);
 
 	impulseAmount = FVector(0.f, 0.f, 100000.0f);
+	lifetimeTimerLength = 1.0f;
+	timerSet = false;
 
  	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
@@ -35,10 +37,17 @@ AImpulseGadget::AImpulseGadget()
 void AImpulseGadget::BeginPlay()
 {
 	Super::BeginPlay();
+	
 	for (TActorIterator<AProject2_TPPCharacter> It(GetWorld()); It; ++It)
 	{
 		playerChar = *It;
 	}
+}
+
+void AImpulseGadget::lifetimeTimerExpired()
+{
+	GetWorldTimerManager().ClearTimer(lifetimeTimerHandle);
+	Destroy();
 }
 
 void AImpulseGadget::OnOverlapBegin(UPrimitiveComponent * OverlappedComp, AActor * OtherActor, UPrimitiveComponent * OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult & SweepResult)
@@ -53,6 +62,10 @@ void AImpulseGadget::OnOverlapBegin(UPrimitiveComponent * OverlappedComp, AActor
 		movementComp->AddImpulse(impulseAmount);
 		if (OtherActor == playerChar) {
 			playerChar->canRoll = false;
+			if (!timerSet) {
+				GetWorld()->GetTimerManager().SetTimer(lifetimeTimerHandle, this, &AImpulseGadget::lifetimeTimerExpired, lifetimeTimerLength, false);
+				timerSet = true;
+			}
 		}
 	}
 }

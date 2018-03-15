@@ -15,6 +15,7 @@
 #include <Runtime/Engine/Classes/Engine/Engine.h>
 #include "GameFramework/SpringArmComponent.h"
 #include <GameFramework/Actor.h>
+#include <Kismet/GameplayStatics.h>
 
 //////////////////////////////////////////////////////////////////////////
 // AProject2_TPPCharacter
@@ -50,6 +51,9 @@ AProject2_TPPCharacter::AProject2_TPPCharacter()
 	FollowCamera->SetupAttachment(CameraBoom, USpringArmComponent::SocketName); // Attach the camera to the end of the boom and let the boom adjust to match the controller orientation
 	FollowCamera->bUsePawnControlRotation = false; // Camera does not rotate relative to arm
 
+	// gizmo stuff
+	GizmoManager = CreateDefaultSubobject<UGizmoManagerComponent>(TEXT("GizmoManager"));
+
 	// enable tick
 	SetActorTickEnabled(true);
 	PrimaryActorTick.bCanEverTick = true;
@@ -70,6 +74,10 @@ AProject2_TPPCharacter::AProject2_TPPCharacter()
 	distance = 4000.0f;
 	finishedLoadingShell = true;
 	shotTimer = 2.0f;
+	maxHealth = 5.0f;
+	gizmoCooldownLengthFloat = 2.0f;
+	gizmoReady = true;
+	currentHealth = maxHealth;
 
 	// Note: The skeletal mesh and anim blueprint references on the Mesh component (inherited from Character) 
 	// are set in the derived blueprint asset named MyCharacter (to avoid direct content references in C++)
@@ -86,6 +94,7 @@ void AProject2_TPPCharacter::SetupPlayerInputComponent(class UInputComponent* Pl
 	PlayerInputComponent->BindAction("Jump", IE_Released, this, &ACharacter::StopJumping);
 	PlayerInputComponent->BindAction("Roll", IE_Released, this, &AProject2_TPPCharacter::Roll);
 	PlayerInputComponent->BindAction("Shoot", IE_Pressed, this, &AProject2_TPPCharacter::checkCanShoot);
+	PlayerInputComponent->BindAction("Gizmo", IE_Pressed, this, &AProject2_TPPCharacter::CheckCanUseGizmo);
 
 	PlayerInputComponent->BindAxis("MoveForward", this, &AProject2_TPPCharacter::MoveForward);
 	PlayerInputComponent->BindAxis("MoveRight", this, &AProject2_TPPCharacter::MoveRight);
@@ -106,10 +115,15 @@ void AProject2_TPPCharacter::SetupPlayerInputComponent(class UInputComponent* Pl
 	PlayerInputComponent->BindAction("ResetVR", IE_Pressed, this, &AProject2_TPPCharacter::OnResetVR);
 }
 
-
 void AProject2_TPPCharacter::OnResetVR()
 {
 	UHeadMountedDisplayFunctionLibrary::ResetOrientationAndPosition();
+}
+
+void AProject2_TPPCharacter::ResetGizmo()
+{
+	GetWorldTimerManager().ClearTimer(gizmoCooldownTimerHandle);
+	gizmoReady = true;
 }
 
 void AProject2_TPPCharacter::ShotTimerFinished()
@@ -180,10 +194,51 @@ void AProject2_TPPCharacter::Shoot()
 
 	if (World->LineTraceSingleByChannel(*hitResult, startTrace, endTrace, ECC_Visibility, *traceParams)) {
 		DrawDebugLine(World, startTrace, endTrace, FColor::Green, false, 5.0f);
-		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Orange, TEXT("We shot stuff."));
+	/*	GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Orange, TEXT("We shot stuff."));*/
 	}
 	finishedLoadingShell = false;
 	World->GetTimerManager().SetTimer(shotTimerHandle, this, &AProject2_TPPCharacter::ShotTimerFinished, shotTimer, false);
+}
+
+void AProject2_TPPCharacter::CustomTakeDamage(int incomingDamage)
+{
+	currentHealth -= incomingDamage;
+	if (currentHealth <= 0) {
+		Die();
+	}
+
+}
+
+void AProject2_TPPCharacter::Die()
+{
+	UGameplayStatics::OpenLevel(this, FName(*GetWorld()->GetName()), false);
+}
+
+void AProject2_TPPCharacter::ThrowGizmo()
+{
+	if (GizmoManager) {
+		GetActorForwardVector();
+		FVector Location(GetActorLocation().X,
+			GetActorLocation().Y + 200.0f,
+			GetActorLocation().Z - 75.0f);
+		FRotator Rotation(GetActorRotation());
+		FActorSpawnParameters SpawnInfo;
+		GizmoManager->SpawnImpulseGadget(Location, Rotation, SpawnInfo);
+		
+	}
+	else {
+		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, TEXT("Gizmo actor NOT assigned."));
+	}
+
+}
+
+void AProject2_TPPCharacter::CheckCanUseGizmo()
+{	
+	if (gizmoReady) {
+		gizmoReady = false;
+		World->GetTimerManager().SetTimer(gizmoCooldownTimerHandle, this, &AProject2_TPPCharacter::ResetGizmo, gizmoCooldownLengthFloat, false);
+		ThrowGizmo();
+	}	
 }
 
 void AProject2_TPPCharacter::Jump()
@@ -200,7 +255,6 @@ void AProject2_TPPCharacter::Landed(const FHitResult& Hit)
 		canRoll = true;
 	}
 	else {
-		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, TEXT("Roll is active and we landed.  Roll is NOT reset."));
 	}
 }
 
